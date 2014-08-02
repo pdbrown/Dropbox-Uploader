@@ -914,50 +914,7 @@ function db_list
         if [[ $IS_DIR != "" ]]; then
 
             print "DONE\n"
-
-            #Extracting directory content [...]
-            #and replacing "}, {" with "}\n{"
-            #I don't like this piece of code... but seems to be the only way to do this with SED, writing a portable code...
-            local DIR_CONTENT=$(sed -n 's/.*: \[{\(.*\)/\1/p' "$RESPONSE_FILE" | sed 's/}, *{/}\
-{/g')
-
-            #Converting escaped quotes to unicode format and extracting files and subfolders
-            echo "$DIR_CONTENT" | sed 's/\\"/\\u0022/' | sed -n 's/.*"bytes": *\([0-9]*\),.*"path": *"\([^"]*\)",.*"is_dir": *\([^"]*\),.*/\2:\3;\1/p' > $RESPONSE_FILE
-
-            #Looking for the biggest file size
-            #to calculate the padding to use
-            local padding=0
-            while read -r line; do
-                local FILE=${line%:*}
-                local META=${line##*:}
-                local SIZE=${META#*;}
-
-                if [[ ${#SIZE} -gt $padding ]]; then
-                    padding=${#SIZE}
-                fi
-            done < $RESPONSE_FILE
-
-            #For each entry...
-            while read -r line; do
-
-                local FILE=${line%:*}
-                local META=${line##*:}
-                local TYPE=${META%;*}
-                local SIZE=${META#*;}
-
-                #Removing unneeded /
-                FILE=${FILE##*/}
-
-                if [[ $TYPE == "false" ]]; then
-                    TYPE="F"
-                else
-                    TYPE="D"
-                fi
-
-                FILE=$(echo -e "$FILE")
-                $PRINTF " [$TYPE] %-${padding}s %s\n" "$SIZE" "$FILE"
-
-            done < $RESPONSE_FILE
+            cat "${RESPONSE_FILE}" | tail -1 | python -m json.tool | grep path | awk '{print $2}' | sed 's/"\(.*\)",/\1/'
 
         #It's a file
         else
